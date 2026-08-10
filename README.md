@@ -1,4 +1,21 @@
 # any-analysis-py
-a backend server utility for `any-capture`, providing a simple interface for packet analysis.
+a backend analysis interface for `any-capture`, designed to simplify packet analysis.
 
-> This library currently supports only HTTP connections. It will be migrated to a WebSocket server in a future release.
+```python
+from any_analysis import AnyCapture
+
+capture = AnyCapture("127.0.0.1:8900", "<secret>")
+
+
+@capture.on_http_event()
+async def on_http(stream):
+    print(stream)
+
+
+@capture.on_tcp_event()
+async def on_tcp(stream):
+    print(stream)
+
+
+capture.run()
+```
