@@ -1,9 +1,9 @@
 import asyncio
-import typing
 import websockets
 from atools.logger import logger
+from typing import Callable, Awaitable, Optional
 
-from . import objects
+from .objects import Channel, HttpStream, TcpStream, UdpStream
 
 
 class AnyCapture:
@@ -21,34 +21,53 @@ class AnyCapture:
         self.capture_address = address
         self.secret = secret
         self.reconnect_delay = reconnect_delay
-        self.http_handler = None
-        self.tcp_handler = None
+        self.http_handler: Optional[Callable[[HttpStream], Awaitable[None]]] = None
+        self.tcp_handler: Optional[Callable[[TcpStream], Awaitable[None]]] = None
+        self.udp_handler: Optional[Callable[[UdpStream], Awaitable[None]]] = None
 
     def on_http_event(self):
-        def decorator(func: typing.Callable):
+        def decorator(func: Callable[[HttpStream], Awaitable[None]]):
             self.http_handler = func
             return func
 
         return decorator
 
     def on_tcp_event(self):
-        def decorator(func: typing.Callable):
+        def decorator(func: Callable[[TcpStream], Awaitable[None]]):
             self.tcp_handler = func
             return func
 
         return decorator
 
-    async def serve(self):
-        await asyncio.gather(self.__consume("http"), self.__consume("tcp"))
+    def on_udp_event(self):
+        def decorator(func: Callable[[UdpStream], Awaitable[None]]):
+            self.udp_handler = func
+            return func
 
-    async def __consume(self, channel: str):
+        return decorator
+
+    async def serve(self):
+        await asyncio.gather(
+            self.__consume(Channel.HTTP),
+            self.__consume(Channel.TCP),
+            self.__consume(Channel.UDP),
+        )
+
+    async def __consume(self, channel: Channel):
         uri = f"{self.capture_address}/{channel}"
         headers = {"Authorization": f"Bearer {self.secret}"}
-        decoder = objects.HttpStream.decode if channel == "http" else objects.TcpStream.decode
+        if channel == Channel.HTTP:
+            decoder = HttpStream.decode
+        elif channel == Channel.TCP:
+            decoder = TcpStream.decode
+        elif channel == Channel.UDP:
+            decoder = UdpStream.decode
+        else:
+            raise Exception(f"Unknown channel {channel}")
 
         while True:
             try:
-                async with websockets.connect(uri, additional_headers=headers) as websocket:
+                async with websockets.connect(uri, additional_headers=headers, max_size=None) as websocket:
                     logger.info("Connected to capture WebSocket %s", uri)
                     async for payload in websocket:
                         if not isinstance(payload, bytes):
@@ -56,7 +75,12 @@ class AnyCapture:
                             continue
                         try:
                             stream = decoder(payload)
-                            handler = self.http_handler if channel == "http" else self.tcp_handler
+                            if channel == Channel.HTTP:
+                                handler = self.http_handler
+                            elif channel == Channel.TCP:
+                                handler = self.tcp_handler
+                            elif channel == Channel.UDP:
+                                handler = self.udp_handler
                             if handler is not None:
                                 await handler(stream)
                         except Exception:

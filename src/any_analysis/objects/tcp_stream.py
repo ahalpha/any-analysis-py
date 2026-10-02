@@ -17,6 +17,7 @@ class TcpEvent(IntEnum):
 class TcpStream(Object):
     id: int
     event: TcpEvent
+    src_address: str
     address: str
     chunk_id: int
     body: bytes
@@ -27,6 +28,7 @@ class TcpStream(Object):
         tcp_stream = TcpStream()
         tcp_stream.id = _.varint
         tcp_stream.event = TcpEvent(_.u8)
+        tcp_stream.src_address = _.str(_.varint)
         tcp_stream.address = _.str(_.varint)
         tcp_stream.chunk_id = _.varint
         tcp_stream.body = _.bytes(_.varint)
