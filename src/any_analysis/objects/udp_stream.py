@@ -14,7 +14,7 @@ class UdpStream(Object):
     event: UdpEvent
     src_address: str
     address: str
-    chunk_id: int
+    packet_id: int
     body: bytes
 
     @staticmethod
