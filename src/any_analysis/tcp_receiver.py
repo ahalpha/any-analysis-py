@@ -1,3 +1,5 @@
+# Maybe deprecated that the capture server has switched to ws.
+
 import asyncio
 from . import objects
 
