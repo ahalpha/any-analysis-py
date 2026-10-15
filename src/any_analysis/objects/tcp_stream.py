@@ -2,6 +2,7 @@ from enum import IntEnum
 from atools.object_tools import Object
 
 from ..base.reader import NetReader
+from ..base.writer import NetWriter
 
 
 class TcpEvent(IntEnum):
@@ -23,8 +24,9 @@ class TcpStream(Object):
     body: bytes
 
     @staticmethod
-    def decode(buf: bytes) -> TcpStream:
-        _ = NetReader(buf)
+    def decode(_: NetReader | bytes) -> TcpStream:
+        if not isinstance(_, NetReader):
+            _ = NetReader(_)
         tcp_stream = TcpStream()
         tcp_stream.id = _.varint
         tcp_stream.event = TcpEvent(_.u8)
@@ -33,3 +35,16 @@ class TcpStream(Object):
         tcp_stream.chunk_id = _.varint
         tcp_stream.body = _.bytes(_.varint)
         return tcp_stream
+
+    def encode(self, _: NetWriter):
+        _.varint(self.id)
+        _.u8(self.event.value)
+        c = self.src_address.encode()
+        _.varint(len(c))
+        _.bytes(c)
+        c = self.address.encode()
+        _.varint(len(c))
+        _.bytes(c)
+        _.varint(self.chunk_id)
+        _.varint(len(self.body))
+        _.bytes(self.body)

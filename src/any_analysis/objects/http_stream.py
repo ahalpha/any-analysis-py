@@ -5,6 +5,7 @@ from atools.logger import logger
 from atools.object_tools import Object
 
 from ..base.reader import NetReader
+from ..base.writer import NetWriter
 
 
 class HttpEvent(IntEnum):
@@ -36,8 +37,9 @@ class HttpStream(Object):
     body: bytes
 
     @staticmethod
-    def decode(buf: bytes) -> HttpStream:
-        _ = NetReader(buf)
+    def decode(_: NetReader | bytes) -> HttpStream:
+        if not isinstance(_, NetReader):
+            _ = NetReader(_)
         http_stream = HttpStream()
         http_stream.id = _.varint
         http_stream.event = HttpEvent(_.u8)
@@ -56,6 +58,30 @@ class HttpStream(Object):
         if _.offset != _.size:
             logger.warning(f"package may be corrupted, {_.size - _.offset} trailing bytes.")
         return http_stream
+
+    def encode(self, _: NetWriter):
+        _.varint(self.id)
+        _.u8(self.event.value)
+        _.u8(self.method.value)
+        c = self.url.encode()
+        _.varint(len(c))
+        _.bytes(c)
+        if self.event == HttpEvent.RESPONSE:
+            _.varint(self.status if self.status is not None else 0)
+        headers = self.headers or {}
+        _.varint(len(headers))
+        for key, val in headers.items():
+            c = key.encode()
+            _.varint(len(c))
+            _.bytes(c)
+            c = val.encode()
+            _.varint(len(c))
+            _.bytes(c)
+        body = self.body
+        if isinstance(body, str):
+            body = body.encode()
+        _.varint(len(body))
+        _.bytes(body)
 
     def auto_decompress(self):
         content_encoding = next((value for key, value in self.headers.items() if key.lower() == "content-encoding"), "")
