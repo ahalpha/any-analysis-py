@@ -31,7 +31,12 @@ class UdpStream(Object):
         udp_stream.body = _.bytes(_.varint)
         return udp_stream
 
-    def encode(self, _: NetWriter):
+    def encode(self, _: NetWriter = None):
+        if _ is None:
+            _ = NetWriter()
+            f = True
+        else:
+            f = False
         _.varint(self.id)
         _.u8(self.event.value)
         c = self.src_address.encode()
@@ -43,3 +48,7 @@ class UdpStream(Object):
         _.varint(self.packet_id)
         _.varint(len(self.body))
         _.bytes(self.body)
+        if f:
+            body = _.getvalue()
+            _.close()
+            return body

@@ -1,5 +1,7 @@
 import zlib
 import gzip
+import brotli
+import zstandard
 from enum import IntEnum
 from atools.logger import logger
 from atools.object_tools import Object
@@ -59,7 +61,12 @@ class HttpStream(Object):
             logger.warning(f"package may be corrupted, {_.size - _.offset} trailing bytes.")
         return http_stream
 
-    def encode(self, _: NetWriter):
+    def encode(self, _: NetWriter = None):
+        if _ is None:
+            _ = NetWriter()
+            f = True
+        else:
+            f = False
         _.varint(self.id)
         _.u8(self.event.value)
         _.u8(self.method.value)
@@ -82,6 +89,10 @@ class HttpStream(Object):
             body = body.encode()
         _.varint(len(body))
         _.bytes(body)
+        if f:
+            body = _.getvalue()
+            _.close()
+            return body
 
     def auto_decompress(self):
         content_encoding = next((value for key, value in self.headers.items() if key.lower() == "content-encoding"), "")
@@ -92,3 +103,7 @@ class HttpStream(Object):
                     self.body = gzip.decompress(self.body)
                 except (gzip.BadGzipFile, EOFError, zlib.error) as exc:
                     raise ValueError("Invalid gzip-compressed HTTP body") from exc
+            if encoding == "br":
+                self.body = brotli.decompress(self.body)
+            if encoding in {"zstd"}:
+                self.body = zstandard.ZstdDecompressor().decompressobj().decompress(self.body)

@@ -36,7 +36,12 @@ class TcpStream(Object):
         tcp_stream.body = _.bytes(_.varint)
         return tcp_stream
 
-    def encode(self, _: NetWriter):
+    def encode(self, _: NetWriter = None):
+        if _ is None:
+            _ = NetWriter()
+            f = True
+        else:
+            f = False
         _.varint(self.id)
         _.u8(self.event.value)
         c = self.src_address.encode()
@@ -48,3 +53,7 @@ class TcpStream(Object):
         _.varint(self.chunk_id)
         _.varint(len(self.body))
         _.bytes(self.body)
+        if f:
+            body = _.getvalue()
+            _.close()
+            return body
