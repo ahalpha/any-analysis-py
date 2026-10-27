@@ -3,7 +3,7 @@ import websockets
 from atools.logger import logger
 from typing import Callable, Awaitable, Optional
 
-from .objects import Channel, HttpStream, TcpStream, UdpStream
+from .objects import Channel, HttpStream, TcpStream, UdpStream, WsStream
 
 
 class AnyCapture:
@@ -24,6 +24,7 @@ class AnyCapture:
         self.http_handler: Optional[Callable[[HttpStream], Awaitable[None]]] = None
         self.tcp_handler: Optional[Callable[[TcpStream], Awaitable[None]]] = None
         self.udp_handler: Optional[Callable[[UdpStream], Awaitable[None]]] = None
+        self.ws_handler: Optional[Callable[[WsStream], Awaitable[None]]] = None
 
     def on_http_event(self):
         def decorator(func: Callable[[HttpStream], Awaitable[None]]):
@@ -46,11 +47,19 @@ class AnyCapture:
 
         return decorator
 
+    def on_ws_event(self):
+        def decorator(func: Callable[[WsStream], Awaitable[None]]):
+            self.ws_handler = func
+            return func
+
+        return decorator
+
     async def serve(self):
         await asyncio.gather(
             self.__consume(Channel.HTTP),
             self.__consume(Channel.TCP),
             self.__consume(Channel.UDP),
+            self.__consume(Channel.WS),
         )
 
     async def __consume(self, channel: Channel):
@@ -62,6 +71,8 @@ class AnyCapture:
             decoder = TcpStream.decode
         elif channel == Channel.UDP:
             decoder = UdpStream.decode
+        elif channel == Channel.WS:
+            decoder = WsStream.decode
         else:
             raise Exception(f"Unknown channel {channel}")
 
@@ -81,6 +92,8 @@ class AnyCapture:
                                 handler = self.tcp_handler
                             elif channel == Channel.UDP:
                                 handler = self.udp_handler
+                            elif channel == Channel.WS:
+                                handler = self.ws_handler
                             if handler is not None:
                                 await handler(stream)
                         except Exception:
