@@ -3,33 +3,32 @@ import gzip
 import brotli
 import zstandard
 from enum import IntEnum
-from atools.logger import logger
 from atools.object_tools import Object
 
 from ..base.reader import NetReader
 from ..base.writer import NetWriter
 
 
-class HttpEvent(IntEnum):  # Enum style modeled after Rust
-    Request = 1
-    Response = 2
-    Error = 3
-    RequestBody = 4
-    ResponseBody = 5
-    RequestEnd = 6
-    ResponseEnd = 7
+class HttpEvent(IntEnum):
+    REQUEST = 1
+    RESPONSE = 2
+    ERROR = 3
+    REQUEST_BODY = 4
+    RESPONSE_BODY = 5
+    REQUEST_END = 6
+    RESPONSE_END = 7
 
 
 class HttpMethod(IntEnum):
-    Get = 1
-    Post = 2
-    Put = 3
-    Delete = 4
-    Head = 5
-    Options = 6
-    Connect = 7
-    Patch = 9
-    Other = 255
+    GET = 1
+    POST = 2
+    PUT = 3
+    DELETE = 4
+    HEAD = 5
+    OPTIONS = 6
+    CONNECT = 7
+    PATCH = 9
+    OTHER = 255
 
 
 class HttpStream(Object):
@@ -88,10 +87,12 @@ class HttpStream(Object):
             f = True
         else:
             f = False
+
         def write_str(s: str | None):
             c = (s or "").encode()
             _.varint(len(c))
             _.bytes(c)
+
         _.varint(self.id)
         _.u8(self.event.value)
         if self.event in (HttpEvent.Request, HttpEvent.Response):
