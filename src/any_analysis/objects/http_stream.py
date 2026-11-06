@@ -50,7 +50,7 @@ class HttpStream(Object):
         http_stream.id = _.varint
         http_stream.event = HttpEvent(_.u8)
 
-        if http_stream.event in (HttpEvent.Request, HttpEvent.Response):
+        if http_stream.event in (HttpEvent.REQUEST, HttpEvent.RESPONSE):
             http_stream.method = HttpMethod(_.u8)
             http_stream.url = _.str(_.varint)
             http_stream.headers = {}
@@ -63,17 +63,17 @@ class HttpStream(Object):
             http_stream.url = None
             http_stream.headers = None
 
-        if http_stream.event == HttpEvent.Response:
+        if http_stream.event == HttpEvent.RESPONSE:
             http_stream.status = _.varint
         else:
             http_stream.status = None
 
-        if http_stream.event == HttpEvent.Error:
+        if http_stream.event == HttpEvent.ERROR:
             http_stream.error = _.str(_.varint)
         else:
             http_stream.error = None
 
-        if http_stream.event in (HttpEvent.RequestBody, HttpEvent.ResponseBody):
+        if http_stream.event in (HttpEvent.REQUEST_BODY, HttpEvent.RESPONSE_BODY):
             http_stream.chunk_id = _.varint
             http_stream.body = _.bytes(_.varint)
         else:
@@ -95,7 +95,7 @@ class HttpStream(Object):
 
         _.varint(self.id)
         _.u8(self.event.value)
-        if self.event in (HttpEvent.Request, HttpEvent.Response):
+        if self.event in (HttpEvent.REQUEST, HttpEvent.RESPONSE):
             _.u8(self.method.value)
             write_str(self.url)
             headers = self.headers or {}
@@ -103,11 +103,11 @@ class HttpStream(Object):
             for key, val in headers.items():
                 write_str(key)
                 write_str(val)
-        if self.event == HttpEvent.Response:
+        if self.event == HttpEvent.RESPONSE:
             _.varint(self.status if self.status is not None else 0)
-        if self.event == HttpEvent.Error:
+        if self.event == HttpEvent.ERROR:
             write_str(self.error)
-        if self.event in (HttpEvent.RequestBody, HttpEvent.ResponseBody):
+        if self.event in (HttpEvent.REQUEST_BODY, HttpEvent.RESPONSE_BODY):
             _.varint(self.chunk_id if self.chunk_id is not None else 0)
             body = self.body or b""
             if isinstance(body, str):
