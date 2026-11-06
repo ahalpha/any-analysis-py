@@ -5,7 +5,7 @@ from datetime import datetime
 from any_analysis import objects
 
 
-class TcpCapture:
+class UdpCapture:
     def __init__(self, group_name: str | None = None, capture_dir: Path | str = None):
         if group_name is None:
             group_name = f"group-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"

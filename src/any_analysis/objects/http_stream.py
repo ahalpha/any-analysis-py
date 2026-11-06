@@ -1,7 +1,3 @@
-import zlib
-import gzip
-import brotli
-import zstandard
 from enum import IntEnum
 from atools.object_tools import Object
 
@@ -118,24 +114,3 @@ class HttpStream(Object):
             data = _.getvalue()
             _.close()
             return data
-
-    @staticmethod
-    def auto_decompress(headers: dict[str, str], body: bytes):
-        content_encoding = next((value for key, value in headers.items() if key.lower() == "content-encoding"), "")
-        encodings = [encoding.strip().lower() for encoding in content_encoding.split(",") if encoding.strip()]
-        for encoding in reversed(encodings):
-            if encoding in {"gzip", "x-gzip"}:
-                try:
-                    body = gzip.decompress(body)
-                except (gzip.BadGzipFile, EOFError, zlib.error) as exc:
-                    raise ValueError("Invalid gzip-compressed HTTP body") from exc
-            if encoding == "br":
-                try:
-                    body = brotli.decompress(body)
-                except brotli.error as exc:
-                    raise ValueError("Invalid br-compressed HTTP body") from exc
-            if encoding == "zstd":
-                try:
-                    body = zstandard.ZstdDecompressor().decompressobj().decompress(body)
-                except zstandard.ZstdError as exc:
-                    raise ValueError("Invalid zstd-compressed HTTP body") from exc
